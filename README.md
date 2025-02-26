@@ -81,7 +81,7 @@ This project is licensed under the [MIT License](https://mit-license.org/).
 ---
 
 ## Contact
-For questions, contact Yating at [yating at live.unc.edu](mailto:yating@live.unc.edu)
+For questions, contact [yating at live.unc.edu](mailto:yating@live.unc.edu)
 
 
 
