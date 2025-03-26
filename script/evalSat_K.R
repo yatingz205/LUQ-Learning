@@ -172,3 +172,4 @@ print(mat)
 
 write.csv(mat, paste('evaData/satMat_', run, '.csv', sep=''))
 
+closeAllConnections()

@@ -6,6 +6,8 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
 
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+os.environ['CUDA_VISIBLE_DEVICES'] = ''
 
 # General setup
 seed, K, n = int(sys.argv[1]), int(sys.argv[2]), int(sys.argv[3])
@@ -99,9 +101,9 @@ print_diagnostics(beta_opt, alpha_opt)
 grads = grad_func(beta_est, alpha_est)
 theta_dim = tf.cast(tf.reduce_prod(beta_est.shape) + tf.reduce_prod(alpha_est.shape), tf.float32)
 lInf_grads = max(tf.reduce_max(grads[0]), tf.reduce_max(grads[1]))
-l1_error = (tf.reduce_sum(tf.abs(beta_est - beta)) + tf.reduce_sum(tf.abs(alpha_est - alpha))) / theta_dim
+mae_error = (tf.reduce_sum(tf.abs(beta_est - beta)) + tf.reduce_sum(tf.abs(alpha_est - alpha))) / theta_dim
 lInf_error = max(tf.reduce_max(tf.abs(beta_est - beta)), tf.reduce_max(tf.abs(alpha_est - alpha)))
-errors = tf.stack((lInf_grads, l1_error, lInf_error))
+errors = tf.stack((lInf_grads, mae_error, lInf_error))
 
 np.save('estData/errors_' + run + '.npy', errors.numpy())
 np.save('estData/beta_opt_' + run + '.npy', beta_opt.numpy())

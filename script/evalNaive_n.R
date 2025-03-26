@@ -7,10 +7,10 @@ suppressMessages({
   library(caret)
 })
 
-sn = args[1]
-seed = args[2]
-n = args[3]
-run = paste('sn=', sn, '_seed=', seed, '_n=', n, sep='')
+seed = ifelse(length(args)>0, as.numeric(args[1]), 42)
+n = ifelse(length(args)>1, as.numeric(args[2]), 600)
+lab = ifelse(length(args)>2, as.character(args[3]), 'op')
+run = paste(lab, '_seed=', seed, '_n=', n, sep='')
 
 output_file = paste('evaData/naiveMat_', run, '.csv', sep='')
 if (file.exists(output_file)) {
@@ -31,7 +31,7 @@ print(run)
 
 
 piK = function(
-  x1, x2, a1, a2, b1, b2, w1, w2, w1R, w2R, vSim, y, 
+  x1, x2, a1, a2, b1, b2, w1, w2, w1R, w2R, vextendSim, y, 
   alpha01_opt, alpha1_opt, alpha02_opt, alpha2_opt,
   beta01_opt, beta1_opt, beta02_opt, beta2_opt, 
   lambda1_opt, lambda2_opt
@@ -93,7 +93,9 @@ pik = function(
   w1R_sparse = factor(rowSums(t(t(w1R) * c(20,5,1))), labels=seq(1,6))
   covars = data.frame(x1, w1, w1R_sparse, a1 = a1_sparse)
 
-  cl <- makeCluster(detectCores() - 1); registerDoParallel(cl)
+  num_cores <- num_cores <- as.numeric(detectCores() - 1)
+  cl <- makeCluster(num_cores)
+  registerDoParallel(cl)
   tune_grid = expand.grid(
     mtry = seq(floor(sqrt(ncol(covars))), ncol(covars), 3), 
     min.node.size = c(5, 15, 25),
@@ -103,7 +105,7 @@ pik = function(
   q1_model = train(
     x = covars, y = q2_max, method = "ranger", num.trees = 500,
     trControl = train_control, tuneGrid = tune_grid)
-  stopCluster(cl); registerDoSEQ()
+  on.exit(stopCluster(cl)); registerDoSEQ()
 
   utilities = matrix(nrow=nrow(x1), ncol=length(a1_combos))
   for (j in 1:length(a1_combos)) {
@@ -132,12 +134,11 @@ pik = function(
 source('genNamespace_n.R')
 
 # observational value
-e = t(apply(v,1,softmax))
 initResults = c(mean(rowSums(y*e)), mean(b2), mean(y))
 
 # estimated DTR at timepoint 2
 pi2_opt <- piK(
-  x1, x2, a1, a2, b1, b2, w1, w2, w1R, w2R, vSim, y, 
+  x1, x2, a1, a2, b1, b2, w1, w2, w1R, w2R, vextendSim, y, 
   alpha01_opt, alpha1_opt, alpha02_opt, alpha2_opt,
   beta01_opt, beta1_opt, beta02_opt, beta2_opt, 
   lambda1_opt, lambda2_opt)
@@ -150,7 +151,7 @@ pi1_map = pi1_opt$pi1_map
 # value of DTR (on testing set), n testing set to be the same as n training
 newResults = evaluateValue(
   pi1_map, pi2_map, 
-  n=nrow(x1), seed=seed, run=run, 
+  n=nrow(x1), seed=seed, lab=lab, run=run, 
   alpha01, alpha1, alpha02, alpha2, 
   beta01, beta1, beta02, beta2, 
   lambda1, lambda2, gamma01, gamma11, gamma02, gamma12)
@@ -160,3 +161,5 @@ rownames(mat) = c('observed data', 'estimated DTR')
 print(mat)
 
 write.csv(mat, paste('evaData/naiveMat_', run, '.csv', sep=''))
+
+closeAllConnections()

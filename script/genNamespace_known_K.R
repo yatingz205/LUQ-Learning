@@ -92,7 +92,7 @@ cond_y_predict = function(x2, a2, y_models, design_names, type = 'rf') {
   return(mean_y)
 }
 
-
+# Fit the estiamted policy
 pik_fnc = function(pik_map, Hk_new) {
 
   val_df = data.frame(a = as.factor(pik_map$val))
@@ -121,7 +121,7 @@ pik_fnc = function(pik_map, Hk_new) {
   }
 }
 
-
+# get Value of estimated DTR
 evaluateValue = function(
     pi_mapList, n, K, seed, run, 
     alpha0, alpha1, beta0, beta1) {

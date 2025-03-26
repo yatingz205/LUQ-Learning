@@ -6,15 +6,17 @@ use_condaenv('prl_env')
 library(ggplot2)
 np = import("numpy")
 
-lab = 'op' # 'op' or 'mis'
+seed_vec = 41 + 1:10
 today = format(Sys.Date(), "%Y%m%d")
+
+labels = c('butlerOurs_', 'butlerSat_', 'butlerNaive_', 'butlerKnown_', 'butlerButler_')
+n_vec = c(100, 200, 500, 1000)
 
 
 # -------------------------
 #           Setup
 # -------------------------
-n_vec = c(150, 300, 600, 1200, 2500)
-seed_vec = 41 + 1:10
+
 numSeeds = length(seed_vec); numN = length(n_vec)
 timeMat = errMat = matrix(nrow=numSeeds, ncol=numN)
 colnames(timeMat) = colnames(errMat) = n_vec
@@ -42,32 +44,27 @@ loadTheta = function(run) {
   alpha_opt = np$load(makeTitle('alpha_opt'))
   lambda_opt = np$load(makeTitle('lambda_opt'))
   beta01_opt = beta_opt[1,]; beta1_opt = beta_opt[2:3,]; beta02_opt = beta_opt[4,]; beta2_opt = beta_opt[5:6,]
-  alpha01_opt = alpha_opt[1,1:6]; alpha1_opt = alpha_opt[1,7]; alpha02_opt = alpha_opt[2,1:6]; alpha2_opt = alpha_opt[2,7]
+  alpha01_opt = alpha_opt[1,1:2]; alpha1_opt = alpha_opt[1,3]; alpha02_opt = alpha_opt[2,1:2]; alpha2_opt = alpha_opt[2,3]
   lambda1_opt = lambda_opt[1]; lambda2_opt = lambda_opt[2]
   
   #concatenate parms and return
   theta = c(alpha01, alpha1, alpha02, alpha2, beta01, beta1, beta02, beta2, lambda1, lambda2)
   theta_opt = c(alpha01_opt, alpha1_opt, alpha02_opt, alpha2_opt, beta01_opt, beta1_opt, beta02_opt, beta2_opt, lambda1_opt, lambda2_opt)
-  return(list(theta=theta, theta_opt=theta_opt))
+  return(list(theta=theta, theta_opt=theta_opt, dim = length(theta)))
 }
-
 
 #populate matrices
 for (i in 1:numSeeds) {
   for (j in 1:numN) {
     seed = seed_vec[i]; n = n_vec[j]
-    file_name = paste('estData/time_', lab, '_seed=', seed, '_n=', n, '.npy', sep='')
-    if(file.exists(file_name)) {
-      timeMat[i,j] = np$load(file_name)
-      run = paste(lab, '_seed=', seed, '_n=', n, sep='')
-      thetas = loadTheta(run)
-      errMat[i,j] = mean(abs(thetas$theta-thetas$theta_opt))
-    }
+    run = paste('seed=', seed, '_n=', n, sep='')
+    file_name = paste0('estData/butler_time_', run, '.rds')
+    if (file.exists(file_name)) timeMat[i, j] = readRDS(file_name)[1]
+    file_name = paste0('estData/butler_errors_', run, '.rds')
+    if (file.exists(file_name)) errMat[i, j] = readRDS(file_name)$mae
   }
 }
 
-# print to check all has ran
-errMat
 
 
 # -------------------------
@@ -84,7 +81,7 @@ plot_data = data.frame(
 
 
 comp_plot = ggplot(data=plot_data, mapping = aes(x=n)) +
-  geom_errorbar(aes(ymin=time_mean-time_sd, ymax=time_mean+time_sd), width=0.2, na.rm=TRUE) +
+  geom_errorbar(aes(ymin=pmax(0,time_mean-time_sd), ymax=time_mean+time_sd), width=0.2, na.rm=TRUE) +
   geom_point(aes(y=time_mean), na.rm=TRUE) + 
   geom_line(aes(y=time_mean), na.rm=TRUE) +
   scale_x_log10(breaks=plot_data$n) + 
@@ -93,14 +90,15 @@ comp_plot = ggplot(data=plot_data, mapping = aes(x=n)) +
   theme_minimal(base_size = 15) + 
   theme(panel.grid.minor = element_blank()) 
 
-filename = paste0("evaData/plot_comptime_op_", today, ".pdf")
+if(butler) {filename = paste0("evaData/plot_comptime_n_butler_", today, ".pdf")} else {
+filename = paste0("evaData/plot_comptime_n_butler_", today, ".pdf")}
 pdf(file= filename, width=8, height=4)
 plot(comp_plot)
 dev.off()
 
 
 error_plot = ggplot(data=plot_data, mapping = aes(x=n)) +
-  geom_errorbar(aes(ymin=err_mean-err_sd, ymax=err_mean+err_sd), width=0.2, na.rm=TRUE) +
+  geom_errorbar(aes(ymin=pmax(0,err_mean-err_sd), ymax=err_mean+err_sd), width=0.2, na.rm=TRUE) +
   geom_point(aes(y=err_mean), na.rm=TRUE) + 
   geom_line(aes(y=err_mean), na.rm=TRUE) +
   scale_x_log10(breaks=plot_data$n) + 
@@ -109,7 +107,10 @@ error_plot = ggplot(data=plot_data, mapping = aes(x=n)) +
   theme_minimal(base_size = 15) +
   theme(panel.grid.minor = element_blank()) 
 
-filename = paste0("evaData/plot_err_op_", today, ".pdf")
+if(butler) {filename = paste0("evaData/plot_err_n_butler_", today, ".pdf")} else {
+filename = paste0("evaData/plot_err_n_butler_", today, ".pdf")}
 pdf(file=filename, width=8, height=4)
 plot(error_plot)
 dev.off()
+
+

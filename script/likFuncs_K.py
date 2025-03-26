@@ -88,11 +88,13 @@ def print_diagnostics(beta_est, alpha_est):
     grads = grad_func(beta_est, alpha_est)
     lInf_grads = max(tf.reduce_max(grads[0]), tf.reduce_max(grads[1]))
     l1_grads = (tf.reduce_sum(tf.abs(grads[0])) + tf.reduce_sum(tf.abs(grads[1]))) / theta_dim
-    l1_error = (tf.reduce_sum(tf.abs(beta_est - beta)) + tf.reduce_sum(tf.abs(alpha_est - alpha))) / theta_dim
-    lInf_error = max(tf.reduce_max(tf.abs(beta_est - beta)), tf.reduce_max(tf.abs(alpha_est - alpha)))
+    mae_error = (tf.reduce_sum(tf.abs(beta_est - beta)) 
+                + tf.reduce_sum(tf.abs(alpha_est - alpha))) / theta_dim
+    lInf_error = max(tf.reduce_max(tf.abs(beta_est - beta)), 
+                     tf.reduce_max(tf.abs(alpha_est - alpha)))
     print('nll', round(nll.numpy().tolist(), 4),
           'l1_grads', round(l1_grads.numpy().tolist(), 6),
           'lInf_grads', round(lInf_grads.numpy().tolist(), 6),
-          'l1_error', round(l1_error.numpy().tolist(), 6),
+          'mae_error', round(l1_error.numpy().tolist(), 6),
           'lInf_error', round(lInf_error.numpy().tolist(), 6))
 

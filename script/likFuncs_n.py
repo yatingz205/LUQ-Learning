@@ -16,12 +16,13 @@ tf.debugging.set_log_device_placement(True)
 
 # --- Simulate Data from R ---
 # Simulate data from R and convert to TensorFlow tensors
-if not os.path.exists('simData/vSim_' + run + '.npy'):
-    subprocess.call(['Rscript', 'simFiles_n.R', str(sn), str(seed), str(n), str(n_sim)])
+if not os.path.exists('simData/eSim_' + run + '.npy'):
+    subprocess.call(['Rscript', 'simFiles_n.R', str(seed), str(n_sim), str(n), str(lab)])
 
 # --- Load and Convert Data to GPU-Compatible Tensors ---
 with tf.device('/GPU:0'):
-    v_sim = tf.constant(np.load(f'simData/vSim_{run}.npy'), dtype=tf.float32)
+    v_extend_sim = tf.constant(np.load(f'simData/vextendSim_{run}.npy'), dtype=tf.float32)
+    e_sim = tf.constant(np.load(f'simData/eSim_{run}.npy'), dtype=tf.float32)
     w1 = tf.constant(np.load(f'simData/w1_{run}.npy'), dtype=tf.float32)
     beta01 = tf.constant(np.load(f'simData/beta01_{run}.npy'), dtype=tf.float32)
     beta1 = tf.constant(np.load(f'simData/beta1_{run}.npy'), dtype=tf.float32)
@@ -65,8 +66,6 @@ with tf.device('/GPU:0'):
 
 # --- Objects for b Components ---
 with tf.device('/GPU:0'):
-    e_sim = softmax_with_padding(v_sim)          # Shape: [1000, 3]
-    print('e_sim shape:', e_sim.shape)           # (1000, 3)
     u1_sim = tf.matmul(e_sim, tf.transpose(x2))  # Shape: [1000, 600]
     print('u1_sim shape:', u1_sim.shape)         # (1000, 600)
     u2_sim = tf.matmul(e_sim, tf.transpose(y))   # Shape: [1000, 600]
@@ -146,10 +145,12 @@ def NLL_func(beta, alpha, lambda_):
     lambda1, lambda2 = lambda_[0], lambda_[1]
 
     #w1 and w2 components
-    w1_probs = tf.nn.sigmoid(beta01[tf.newaxis,:] + (v_sim @ beta1))[tf.newaxis,:,:]
+    w1_probs = tf.nn.sigmoid(v_extend_sim @ tf.concat([tf.reshape(beta01, (1, -1)), beta1], axis=0))[tf.newaxis, :, :]
+    # tf.nn.sigmoid(beta01[tf.newaxis,:] + (beta01 + v_sim @ beta1))[tf.newaxis,:,:]
     inner_comps1 = w1bc*tf.math.log(w1_probs) + (1-w1bc)*tf.math.log((1-w1_probs))
     comps_w1 = tf.transpose(tf.exp(tf.reduce_sum(inner_comps1, axis=-1)))
-    w2_probs = tf.nn.sigmoid(beta02[tf.newaxis,:] + (v_sim @ beta2))[tf.newaxis,:,:]
+    w2_probs = tf.nn.sigmoid(v_extend_sim @ tf.concat([tf.reshape(beta02, (1, -1)), beta2], axis=0))[tf.newaxis, :, :]
+    # tf.nn.sigmoid(beta02[tf.newaxis,:] + (beta02 + v_sim @ beta2))[tf.newaxis,:,:]
     inner_comps2 = w2bc*tf.math.log(w2_probs) + (1-w2bc)*tf.math.log((1-w2_probs))
     comps_w2 = tf.transpose(tf.exp(tf.reduce_sum(inner_comps2, axis=-1)))
 
@@ -203,7 +204,7 @@ def print_diagnostics(beta_est, alpha_est, lambda_est):
     lInf_grads = max(tf.reduce_max(grads[0]), tf.reduce_max(grads[1]), tf.reduce_max(grads[2]))
     total_params = tf.cast(tf.size(beta) + tf.size(alpha) + tf.size(lambda_), tf.float32)
     
-    l1_error = (tf.reduce_sum(tf.math.abs(beta_est-beta)) +
+    mae_error = (tf.reduce_sum(tf.math.abs(beta_est-beta)) +
                 tf.reduce_sum(tf.math.abs(alpha_est-alpha)) +
                 tf.reduce_sum(tf.math.abs(lambda_est-lambda_)))/total_params
     lInf_error = max(tf.reduce_max(tf.math.abs(beta_est-beta)),
@@ -211,6 +212,6 @@ def print_diagnostics(beta_est, alpha_est, lambda_est):
                      tf.reduce_max(tf.math.abs(lambda_est-lambda_)))
     print('nll', round(nll.numpy().tolist(), 4), 
           'lInf_grads', round(lInf_grads.numpy().tolist(), 6), 
-          'l1_error', round(l1_error.numpy().tolist(), 6), 
+          'mae_error', round(mae_error.numpy().tolist(), 6), 
           'lInf_error', round(lInf_error.numpy().tolist(), 6))
 

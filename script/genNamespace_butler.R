@@ -4,7 +4,7 @@
 #        Algorithm Helper Functions
 # ----------------------------------------
 
-exp_e = function(theta) {
+exp_e = function(theta, w1_project, vSim, eSim) {
   beta0 = theta[1:p]; beta1 = theta[(p+1):(2*p)]
   w1_probs = exp(colSums(dbinom(w1_project, 1, sigmoid(beta0 + beta1%*%t(vSim)), log=T)))
   num = cbind(colMeans(eSim[,1] * w1_probs), colMeans(eSim[,2] * w1_probs))
@@ -25,13 +25,13 @@ cond_y = function(y, x1, a1) {
 }
 
 # estimate DTR
-piK = function(x1, w1, a1, y, thetaEst) {
+piK = function(x1, w1, a1, y, thetaEst, w1_project, vSim, eSim) {
   # get cond_y model
   res = cond_y(y, x1, a1)
   mean_y = res$mean_y; y_models = res$y_models
 
   # get cond_e
-  mean_e = exp_e(thetaEst)
+  mean_e = exp_e(thetaEst, w1_project, vSim, eSim)
 
   # based on utility, get pi_opt
   A1_set = unique(a1)
@@ -81,13 +81,13 @@ piK_naive = function(x1, w1, a1, y) {
   return(list(q1_max=q1_max, a1_max = a1_max, pi1_map = pi1_map))
 }
 
-piK_sat = function(x1, w1, a1, b1, thetaEst) {
+piK_sat = function(x1, w1, a1, b1, thetaEst, w1_project, vSim, eSim) {
   # get cond_y model
   res = cond_y(as.matrix(b1), x1, a1)
   mean_y = res$mean_y; y_models = res$y_models
 
   # get cond_e
-  mean_e = exp_e(thetaEst)
+  mean_e = exp_e(thetaEst, w1_project, vSim, eSim)
 
   # based on utility, get pi_opt
   A1_set = unique(a1)
@@ -115,7 +115,7 @@ piK_known = function(x1, w1, a1, y, v) {
   mean_y = res$mean_y; y_models = res$y_models
 
   # get cond_e
-  mean_e = t(apply(v,1,softmax))
+  mean_e = cbind(pnorm(v), 1-pnorm(v))
 
   # based on utility, get pi_opt
   A1_set = unique(a1)
@@ -137,7 +137,7 @@ piK_known = function(x1, w1, a1, y, v) {
   return(list(q1_max=q1_max, a1_max = a1_max, pi1_map = pi1_map))
 }
 
-# map X to A optimal
+# fit estiamted DTR
 piK_fnc = function(pi1_map, x1_new, w1_new) {
 
   key_new_df = data.frame(x1 = x1_new, w1 = w1_new)
@@ -206,7 +206,7 @@ piK_known_fnc = function(pi1_map, x1_new, v_new) {
   }
 }
 
-# evaluate DTR
+# evaluate DTR (simulated/estimated V)
 evaluateValue = function(
     pi1_map, n, p, seed, run, 
     alpha0, alpha1, beta0, beta1, delta0, delta1, sigma
@@ -229,12 +229,11 @@ evaluateValue = function(
     e_new = cbind(pnorm(v_new), 1-pnorm(v_new))
     u_new = rowSums(e_new*y_new)
     u_shift = range(u_new)
-    u_new = 6 * (u_new - u_shift[1])/(u_shift[2]-u_shift[1]) - 3
-    b1_new = rpois(n, exp(alpha0 + alpha1*u_new))
+    u_tf_new = 6 * (u_new - u_shift[1])/(u_shift[2]-u_shift[1]) - 3
+    b1_new = rpois(n, exp(alpha0 + alpha1*u_tf_new))
 
     return(c(mean(rowSums(y_new*e_new)), mean(b1_new), mean(y_new)))
 }
-
 
 evaluateValue_known = function(
     pi1_map, n, p, seed, run, 
@@ -252,14 +251,16 @@ evaluateValue_known = function(
 
     a1_opt_label = piK_known_fnc(pi1_map, x1_new, v_new)
     a1_opt = as.numeric(gsub("a", "", a1_opt_label))
+    table(a1_opt_label)
 
     y_new = matrix(nrow=n, ncol=2)
     for (j in 1:2) y_new[,j] = rnorm(n, cbind(1,x1_new)%*%delta0[,j] + a1_opt*cbind(1,x1_new)%*%delta1[,j], sigma)
     e_new = cbind(pnorm(v_new), 1-pnorm(v_new))
+
     u_new = rowSums(e_new*y_new)
     u_shift = range(u_new)
-    u_new = 6 * (u_new - u_shift[1])/(u_shift[2]-u_shift[1]) - 3
-    b1_new = rpois(n, exp(alpha0 + alpha1*u_new))
+    u_tf_new = 6 * (u_new - u_shift[1])/(u_shift[2]-u_shift[1]) - 3
+    b1_new = rpois(n, exp(alpha0 + alpha1*u_tf_new))
 
     return(c(mean(rowSums(y_new*e_new)), mean(b1_new), mean(y_new)))
 }

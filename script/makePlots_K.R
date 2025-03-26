@@ -1,5 +1,4 @@
 # script to generate plot of error on theta and computation time
-
 setwd(dirname(rstudioapi::getSourceEditorContext()$path))
 
 library(reticulate)
@@ -7,19 +6,20 @@ use_condaenv('prl_env')
 library(ggplot2)
 np = import("numpy")
 
-n = 600
+n = 2500 # 600 or 2500
 today = format(Sys.Date(), "%Y%m%d")
 
 
 # -------------------------
 #           Setup
 # -------------------------
-K_vec = c(2, 4, 6, 8)
+K_vec = c(2, 4, 6, 8, 10)
 seed_vec = 41 + 1:10
 numSeeds = length(seed_vec); numK = length(K_vec)
 timeMat = errMat = matrix(nrow=numSeeds, ncol=numK)
 colnames(timeMat) = colnames(errMat) = K_vec
 rownames(timeMat) = rownames(errMat) = seed_vec
+
 
 # -------------------------
 #        Gather Data
@@ -50,11 +50,11 @@ loadTheta = function(run) {
 for (i in 1:numSeeds) {
   for (j in 1:numK) {
     seed = seed_vec[i]; K = K_vec[j]
-    run = paste('seed=', seed, '_K=', K, '_n=', n, sep='')
+    run = paste('seed=', seed, '_Ksm=', K, '_n=', n, sep='')
     file_name = paste0('estData/time_', run, '.npy')
     if(file.exists(file_name)) timeMat[i,j] = np$load(file_name)
     file_name = paste0('estData/errors_', run, '.npy')
-    if(file.exists(file_name)) errMat[i,j] = np$load(file_name)[2] / loadTheta(run)$dim  #l1 error to MAE
+    if(file.exists(file_name)) errMat[i,j] = np$load(file_name)[2]
   }
 }
 
@@ -65,44 +65,38 @@ for (i in 1:numSeeds) {
 # -------------------------
 #statistics for plotting
 plot_data = data.frame(
-  time_mean = apply(timeMat, 2, mean, na.rm = TRUE), 
-  time_sd = apply(timeMat, 2, sd, na.rm = TRUE),
+  time_mean = apply(timeMat, 2, mean, na.rm = TRUE)/60, 
+  time_sd = apply(timeMat, 2, sd, na.rm = TRUE)/60,
   err_mean = apply(errMat, 2, mean, na.rm = TRUE),
   err_sd = apply(errMat, 2, sd, na.rm = TRUE),
   K = K_vec
 )
 
-# Remove rows with NA values before plotting
-# plot_data <- na.omit(plot_data)
 
-# ticks = c(100, 200, 450, 900)
 comp_plot = ggplot(data=plot_data, mapping = aes(x=K)) +
-  geom_errorbar(aes(ymin=time_mean-time_sd, ymax=time_mean+time_sd), width=0.05, na.rm=TRUE) +
+  geom_errorbar(aes(ymin=pmax(0,time_mean-time_sd), ymax=time_mean+time_sd), width=0.2, na.rm=TRUE) +
   geom_point(aes(y=time_mean), na.rm=TRUE) + 
   geom_line(aes(y=time_mean), na.rm=TRUE) +
-  #scale_y_log10() + 
   xlab('K') + 
-  ylab('Computation Time (seconds)') + 
-  theme_minimal() + 
+  ylab("Computation Time (minutes)") +
+  theme_minimal(base_size = 15) + 
   theme(panel.grid.minor = element_blank()) 
 
-pdf(file=paste0("evaData/plot_comptime_K_", today, ".pdf"), width=7, height=4)
+pdf(file=paste0("evaData/plot_comptime_K_n=",n,"_", today, ".pdf"), width=7, height=4)
 plot(comp_plot)
 dev.off()
 
-#ticks = c(0.03, 0.06, 0.12, 0.24)
+
 error_plot = ggplot(data=plot_data, mapping = aes(x=K)) +
-  geom_errorbar(aes(ymin=err_mean-err_sd, ymax=err_mean+err_sd), width=0.05, na.rm=TRUE) +
+  geom_errorbar(aes(ymin=pmax(0,err_mean-err_sd), ymax=err_mean+err_sd), width=0.2, na.rm=TRUE) +
   geom_point(aes(y=err_mean), na.rm=TRUE) + 
   geom_line(aes(y=err_mean), na.rm=TRUE) +
-  #scale_y_log10() + 
   xlab('K') + 
   ylab('Mean Absolute Error') + 
-  theme_minimal(base_size = 20) +
-  theme(axis.text=element_text(size=20), axis.title=element_text(size=23), 
-        panel.grid.minor = element_blank()) 
+  theme_minimal(base_size = 15) +
+  theme(panel.grid.minor = element_blank()) 
 
-pdf(file=paste0("evaData/plot_err_K_", today, ".pdf"), width=7, height=4)
+pdf(file=paste0("evaData/plot_err_K_n=",n,"_", today, ".pdf"), width=7, height=4)
 plot(error_plot)
 dev.off()
 

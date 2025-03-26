@@ -157,4 +157,4 @@ print(mat)
 
 write.csv(mat, paste('evaData/knownMat_', run, '.csv', sep=''))
 
-
+closeAllConnections()

@@ -13,9 +13,8 @@ tau_metric = function(pi0, pi) {
   return(tau)
 }
 
-ensure_file_exists <- function(filename, script_to_run, args = "") {
-  if (!file.exists(filename)) {
-    cat("File", filename, "not found. Running", script_to_run, "with arguments:", args, "\n")
-    system(paste("Rscript", script_to_run, args))  
-  }
+simulate_dirichlet <- function(nSim, alpha) {
+  E <- matrix(rgamma(nSim * length(alpha), shape = alpha, rate = 1), ncol = length(alpha), byrow = TRUE)
+  E <- E / rowSums(E)  
+  return(E)
 }

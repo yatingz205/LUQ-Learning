@@ -160,4 +160,4 @@ print(mat)
 
 write.csv(mat, paste('evaData/naiveMat_', run, '.csv', sep=''))
 
-
+closeAllConnections()

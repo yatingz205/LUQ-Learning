@@ -12,15 +12,17 @@ set.seed(seed)
 #generating model parameters
 num_w = 2; num_v = 2; num_b = 3
 num_y = num_v + 1; num_alpha = num_b - 1
+
 beta0 = matrix(0, nrow=num_w, ncol=K)
 beta1 = array(0, dim=c(num_w, K, num_v))
 beta1[,1,] = rnorm(num_w * num_v)
 for (k in 1:(K-1)) beta1[,k+1,] = sqrt(0.8)*beta1[,k,] + sqrt(0.2)*rnorm(num_w * num_v)
+
 alpha1 = 0.6 + 0.05*c(1:K) - 0.1*K
 alpha0 = matrix(0, nrow=num_alpha, ncol=K)
 alpha0[,1] = 0.75*c(1:num_alpha)
-
 for (k in 1:(K-1)) alpha0[,k+1] = alpha0[,1] + k/(4*(K-1))
+
 gamma0 = gamma1 = array(0, dim=c(4,num_v+1,K))
 gamma0[,,1] = rnorm(4*num_y, 0, 0.5)
 gamma1[,,1] = rnorm(4*num_y, 0, 1)

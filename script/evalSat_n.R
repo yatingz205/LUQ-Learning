@@ -7,10 +7,10 @@ suppressMessages({
   library(caret)
 })
 
-sn = args[1]
-seed = args[2]
-n = args[3]
-run = paste('sn=', sn, '_seed=', seed, '_n=', n, sep='')
+seed = ifelse(length(args)>0, as.numeric(args[1]), 42)
+n = ifelse(length(args)>1, as.numeric(args[2]), 600)
+lab = ifelse(length(args)>2, as.character(args[3]), 'mis')
+run = paste(lab, '_seed=', seed, '_n=', n, sep='')
 
 output_file = paste('evaData/satMat_', run, '.csv', sep='')
 if (file.exists(output_file)) {
@@ -42,20 +42,20 @@ piK = function(
     w1R_sparse = factor(rowSums(t(t(w1R) * c(20,5,1))), labels=seq(1,6))
     w2R_sparse = factor(rowSums(t(t(w2R) * c(20,5,1))), labels=seq(1,6))
     covars = data.frame(x1, a1_label = a1_label, b1 = b1, w1, w2, W1R = w1R_sparse, W2R = w2R_sparse, a2_label = a2_label)
-    b2_factor <- factor(b2, levels = c(1, 2, 3), labels = c("Class1", "Class2", "Class3"))
 
     # Fit Q model
-    cl <- makeCluster(detectCores() - 1); registerDoParallel(cl)
+    num_cores <- as.numeric(detectCores() - 1)
+    cl <- makeCluster(num_cores)
+    registerDoParallel(cl)
     tune_grid = expand.grid(
         mtry = seq(floor(sqrt(ncol(covars))), min(floor(sqrt(ncol(covars))) + 6, ncol(covars)), 3), 
-        min.node.size = c(5, 15, 25), splitrule = 'gini')
+        min.node.size = c(5, 15, 25), splitrule = 'variance')
     train_control = trainControl(
-        method = "cv", number = 5, allowParallel = TRUE, verboseIter = FALSE, 
-        classProbs = TRUE, summaryFunction = multiClassSummary)
+        method = "cv", number = 5, allowParallel = TRUE, verboseIter = FALSE)
     q2_model = train(
-        x = covars, y = b2_factor, method = "ranger", num.trees = 500,
-        trControl = train_control, tuneGrid = tune_grid, metric = "Accuracy")
-    stopCluster(cl); registerDoSEQ()
+        x = covars, y = as.numeric(b2), method = "ranger", num.trees = 500,
+        trControl = train_control, tuneGrid = tune_grid, metric = "RMSE")
+    on.exit(stopCluster(cl)); registerDoSEQ()
 
     # Get max Value and opt action
     utilities = matrix(nrow=nrow(x2), ncol=nrow(A2_set))
@@ -63,8 +63,7 @@ piK = function(
     for (j in 1:nrow(A2_set)) {
       a2_broad = rep(A2_set_label[j], nrow(x1))
       covars_j = data.frame(x1, a1_label = a1_label, b1 = b1, w1, w2, W1R = w1R_sparse, W2R = w2R_sparse, a2_label = a2_broad)
-      pred_factor = predict(q2_model, covars_j)
-      utilities[,j] = as.numeric(factor(pred_factor, levels = c("Class1", "Class2", "Class3"), labels = c(1, 2, 3)))
+      utilities[,j] = predict(q2_model, covars_j)
     }
     q2_max = apply(utilities, 1, max)
     a2_max = A2_set[max.col(utilities, ties.method = "first"), ,drop=FALSE]
@@ -103,21 +102,19 @@ pik = function(
   w1R_sparse = factor(rowSums(t(t(w1R) * c(20,5,1))), labels=seq(1,6))
   covars = data.frame(x1, w1, w1R_sparse, a1 = a1_sparse)
 
-  q2_factor <- factor(q2_max, levels = c(1, 2, 3), labels = c("Class1", "Class2", "Class3"))
-  q2_factor <- droplevels(q2_factor)
-
   # Fit Q model
-  cl <- makeCluster(detectCores() - 1); registerDoParallel(cl)
+  num_cores <- as.numeric(detectCores() - 1)
+  cl <- makeCluster(num_cores)
+  registerDoParallel(cl)
   tune_grid = expand.grid(
       mtry = seq(floor(sqrt(ncol(covars))), min(floor(sqrt(ncol(covars))) + 6, ncol(covars)), 3), 
-      min.node.size = c(5, 15, 25), splitrule = 'gini')
+      min.node.size = c(5, 15, 25), splitrule = 'variance')
   train_control = trainControl(
-      method = "cv", number = 5, allowParallel = TRUE, verboseIter = FALSE, 
-      classProbs = TRUE, summaryFunction = multiClassSummary)
+      method = "cv", number = 5, allowParallel = TRUE, verboseIter = FALSE)
   q1_model = train(
-      x = covars, y = q2_factor, method = "ranger", num.trees = 500,
-      trControl = train_control, tuneGrid = tune_grid, metric = "Accuracy")
-  stopCluster(cl); registerDoSEQ()
+      x = covars, y = q2_max, method = "ranger", num.trees = 500,
+      trControl = train_control, tuneGrid = tune_grid, metric = "RMSE")
+  on.exit(stopCluster(cl)); registerDoSEQ()
 
   utilities = matrix(nrow=nrow(x1), ncol=length(a1_combos))
   for (j in 1:length(a1_combos)) {
@@ -146,7 +143,6 @@ pik = function(
 source('genNamespace_n.R')
 
 # observational value
-e = t(apply(v,1,softmax))
 initResults = c(mean(rowSums(y*e)), mean(b2), mean(y))
 
 # estimated DTR at timepoint 2
@@ -160,7 +156,7 @@ pi1_map = pi1_opt$pi1_map
 # value of DTR (on testing set), n testing set to be the same as n training
 newResults = evaluateValue(
   pi1_map, pi2_map, 
-  n=nrow(x1), seed=seed, run=run, 
+  n=nrow(x1), seed=seed, lab=lab, run=run, 
   alpha01, alpha1, alpha02, alpha2, 
   beta01, beta1, beta02, beta2, 
   lambda1, lambda2, gamma01, gamma11, gamma02, gamma12)
@@ -172,4 +168,4 @@ print(mat)
 #save.image(paste('evaData/oursData_', run, '.RData', sep=''))
 write.csv(mat, paste('evaData/satMat_', run, '.csv', sep=''))
 
-
+closeAllConnections()
