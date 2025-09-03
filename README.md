@@ -38,7 +38,7 @@ conda activate luql_env
 ## Instructions for BEST Trial Simulation
 
 1. **Run the simulation and estimation scripts**:
-   - Run `fitModel_n.py [seed] [n] [label]` or `fitModel_K.py [seed] [K] [n]` to generate data and estimate parameters for the preference model for specified seed, n, and K.
+   - Run `python fitModel_n.py [seed] [n] [label]` or `python fitModel_K.py [seed] [K] [n]` to generate data and estimate parameters for the preference model for specified seed, n, and K.
    - label = op runs the scinario with competing outcomes; label = mis runs the model mis-specification case.
    - **Outputs**:
      - Simulated parameters and data → Stored in `./simData/`
