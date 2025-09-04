@@ -33,20 +33,26 @@ Install the required conda environment by running:
 conda env create -f environment.yml
 conda activate luql_env
 ```
+Set up required packages for R by:
+
+```bash
+module add r/4.4.2
+```
+
 ---
 
 ## Instructions for BEST Trial Simulation
 
 1. **Run the simulation and estimation scripts**:
-   - Run `python fitModel_n.py [seed] [n] [label]` or `python fitModel_K.py [seed] [K] [n]` to generate data and estimate parameters for the preference model for specified seed, n, and K.
+   - Locate into the `script` directory and run `python fitModel_n.py [seed] [n] [label]` or `python fitModel_K.py [seed] [K] [n]` to generate data and estimate parameters for the preference model for specified seed, n, and K.
    - label = op runs the scinario with competing outcomes; label = mis runs the model mis-specification case.
    - **Outputs**:
      - Simulated parameters and data → Stored in `./simData/`
      - Estimated parameters, estimation error, and computation time → Stored in `./estData/`
 
 2. **Evaluate Q-learning algorithms**:
-   - Run `evalOurs_n.py`, `evalNaive_n.py`, `evalSat_n.py`, `evalKnown_n.py` with the appropriate seed, n, and label parameters.
-   - Or run `evalOurs_K.py`, `evalNaive_K.py`, `evalSat_K.py`, `evalKnown_K.py` with the appropriate seed, K, and n parameters.
+   - Run `evalOurs_n.R`, `evalNaive_n.R`, `evalSat_n.R`, `evalKnown_n.R` with the appropriate seed, n, and label parameters. For example, `Rscript evalOurs_n.R [seed] [n] [lab]`.
+   - Or run `evalOurs_K.R`, `evalNaive_K.R`, `evalSat_K.R`, `evalKnown_K.R` with the appropriate seed, K, and n parameters. For example, `Rscript evalOurs_K.R [seed] [K] [n]`.
    - **Outputs**:
      - Observed and estimated value associated with the DTR obtained from each type of Q-learning algorithm → Stored in `./evaData/`.
 
