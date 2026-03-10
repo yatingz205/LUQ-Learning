@@ -19,10 +19,10 @@ print('run:', run)
 
 batch_size = 1200
 
-#check_file = "./estData/alpha_opt_" + run + ".npy"
-#if os.path.exists(check_file):
-#    print(f"Job skipped: {check_file} already exists.")
-#    sys.exit(0)
+check_file = "./estData/alpha_opt_" + run + ".npy"
+if os.path.exists(check_file):
+    print(f"Job skipped: {check_file} already exists.")
+    sys.exit(0)
 
 exec(open("likFuncs_K.py").read())
 print('Printing diagnostics for truth')

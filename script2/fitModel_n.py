@@ -17,10 +17,10 @@ lab = sys.argv[4]
 run = lab + '_seed=' + str(seed) + '_n=' + str(n)
 print('run:', run)
 
-#check_file = "./estData/alpha_opt_" + run + ".npy"
-#if os.path.exists(check_file):
-#    print(f"Job skipped: {check_file} already exists.")
-#    sys.exit(0)
+check_file = "./estData/alpha_opt_" + run + ".npy"
+if os.path.exists(check_file):
+   print(f"Job skipped: {check_file} already exists.")
+   sys.exit(0)
 
 exec(open("likFuncs_n.py").read())
 print('printing diagnostics for truth')

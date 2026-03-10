@@ -11,11 +11,11 @@ n = ifelse(length(args)>1, as.numeric(args[2]), 600)
 lab = ifelse(length(args)>2, as.character(args[3]), 'op')
 run = paste(lab, '_seed=', seed, '_n=', n, sep='')
 
-#output_file = paste('evaData/oursMat_', run, '.csv', sep='')
-#if (file.exists(output_file)) {
-#  message("File ", output_file, " Already exists. Exiting script.")
-#  quit(save = "no", status = 0)
-#} 
+output_file = paste('evaData/oursMat_', run, '.csv', sep='')
+if (file.exists(output_file)) {
+  message("File ", output_file, " Already exists. Exiting script.")
+  quit(save = "no", status = 0)
+} 
 
 seed = as.numeric(seed)
 dir.create("evaData", showWarnings = FALSE, recursive = TRUE)

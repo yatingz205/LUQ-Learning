@@ -11,11 +11,11 @@ K = ifelse(length(args) > 1, args[2], 2)
 n = ifelse(length(args) > 2, args[3], 600)
 run = paste('seed=', seed, '_K=', K, '_n=', n, sep='')
 
-#output_file = paste('evaData/naiveMat_', run, '.csv', sep='')
-#if (file.exists(output_file)) {
-#  message("File ", output_file, " Already exists. Exiting script.")
-#  quit(save = "no", status = 0)
-#}
+output_file = paste('evaData/naiveMat_', run, '.csv', sep='')
+if (file.exists(output_file)) {
+  message("File ", output_file, " Already exists. Exiting script.")
+  quit(save = "no", status = 0)
+}
 
 seed = as.numeric(seed)
 dir.create("evaData", showWarnings = FALSE, recursive = TRUE)
