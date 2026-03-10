@@ -1,5 +1,6 @@
 #call-in helper functions
 source('helperFuncs.R')
+dir.create("simData", showWarnings = FALSE, recursive = TRUE)
 
 #simulating parameters
 args = commandArgs(trailingOnly = TRUE)

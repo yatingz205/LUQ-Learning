@@ -18,6 +18,7 @@ run = paste('seed=', seed, '_K=', K, '_n=', n, sep='')
 #}
 
 seed = as.numeric(seed)
+dir.create("evaData", showWarnings = FALSE, recursive = TRUE)
 K = as.numeric(K); n = as.numeric(n)
 
 set.seed(seed)

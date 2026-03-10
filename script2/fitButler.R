@@ -15,6 +15,9 @@ n = ifelse(length(args) > 1, as.numeric(args[2]), 200)
 run = paste0('seed=', seed, '_n=', n)
 print(paste('run:', run))
 set.seed(seed)
+dir.create("simData", showWarnings = FALSE, recursive = TRUE)
+dir.create("estData", showWarnings = FALSE, recursive = TRUE)
+dir.create("evaData", showWarnings = FALSE, recursive = TRUE)
 
 # Generate parameters 
 p=10

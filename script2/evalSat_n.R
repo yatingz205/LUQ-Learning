@@ -18,6 +18,7 @@ run = paste(lab, '_seed=', seed, '_n=', n, sep='')
 #}
 
 seed = as.numeric(seed)
+dir.create("evaData", showWarnings = FALSE, recursive = TRUE)
 n = as.numeric(n)
 
 set.seed(seed)
