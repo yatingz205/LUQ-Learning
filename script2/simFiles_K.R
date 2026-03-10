@@ -4,9 +4,9 @@ source('helperFuncs.R')
 #simulating parameters
 args = commandArgs(trailingOnly = TRUE)
 seed = ifelse(length(args)>0, as.double(args[1]), 42)
-K = ifelse(length(args)>1, as.double(args[2]), 2)
+nSim = ifelse(length(args)>3, as.double(args[2]), 1000)
 n = ifelse(length(args)>2, as.double(args[3]), 600)
-nSim = ifelse(length(args)>3, as.double(args[4]), 1000)
+K = ifelse(length(args)>1, as.double(args[4]), 2)
 set.seed(seed)
 
 #generating model parameters
@@ -18,10 +18,11 @@ beta1 = array(0, dim=c(num_w, K, num_v))
 beta1[,1,] = rnorm(num_w * num_v)
 for (k in 1:(K-1)) beta1[,k+1,] = sqrt(0.8)*beta1[,k,] + sqrt(0.2)*rnorm(num_w * num_v)
 
-alpha1 = 0.6 + 0.05*c(1:K) - 0.1*K
+alpha1 = 0.25 + 0.10 * c(1:K) / K
 alpha0 = matrix(0, nrow=num_alpha, ncol=K)
-alpha0[,1] = 0.75*c(1:num_alpha)
-for (k in 1:(K-1)) alpha0[,k+1] = alpha0[,1] + k/(4*(K-1))
+alpha0_base = 0.75 * c(1:num_alpha)
+alpha0[,1] = alpha0_base
+for (k in 1:(K-1)) alpha0[,k+1] = alpha0[,1] + 0.1 * k/(K-1)
 
 gamma0 = gamma1 = array(0, dim=c(4,num_v+1,K))
 gamma0[,,1] = rnorm(4*num_y, 0, 0.5)
@@ -44,7 +45,6 @@ shift_x = scale_x = matrix(nrow=3, ncol=K)
 #simulating trajectories
 V = matrix(rnorm(num_v*n), ncol=num_v)
 E = t(apply(V, 1, softmax))
-ER = t(apply(E, 1, order))
 X[,,1] = rbinom(num_y*n, 10, 0.5)
 A_sparse = matrix(sample(c(1,2,3,4), K*n, replace=T), ncol=K)
 for (k in 1:K) {
@@ -65,19 +65,16 @@ for (k in 1:K) {
 y = X[,,K+1]
 
 
-#simulating V from known marginal
-vSim = matrix(rnorm(num_v*nSim), nrow=nSim, ncol=num_v)
-
 #saving files to python
+Sys.setenv(RETICULATE_PYTHON = Sys.which("python"))
 library(reticulate)
 np = import("numpy")
 run = paste('seed=', seed, '_K=', K, '_n=', n, sep='')
 print(run)
 makeTitle = function(objName) paste('simData/', objName, '_', run, '.npy', sep='')
-np$save(makeTitle('V'), V); np$save(makeTitle('W'), W)
-np$save(makeTitle('A'), A); np$save(makeTitle('X'), X)
+np$save(makeTitle('V'), V); np$save(makeTitle('E'), E)
+np$save(makeTitle('W'), W); np$save(makeTitle('A'), A); np$save(makeTitle('X'), X)
 np$save(makeTitle('y'), y); np$save(makeTitle('B'), B)
-np$save(makeTitle('vSim'), vSim)
 np$save(makeTitle('beta0'), beta0); np$save(makeTitle('beta1'), beta1)
 np$save(makeTitle('alpha0'), alpha0); np$save(makeTitle('alpha1'), alpha1)
 np$save(makeTitle('gamma0'), gamma0); np$save(makeTitle('gamma1'), gamma1)

@@ -1,7 +1,6 @@
 #helper functions and libraries
 suppressMessages({
   library(numDeriv)
-  library(doParallel)
   library(caret)
 })
 
@@ -23,8 +22,8 @@ beta0 = rep(0, p)
 beta1 = rnorm(p)
 delta0 = matrix(nrow=6, ncol=2)
 delta1 = matrix(nrow=6, ncol=2)
-delta0[,1] = c(2.5, .2, .25, -.7, -2.5, 2.4)
-delta1[,1] = c(1.7, -2.3, 4.5, 6, -7.3, -1.6)
+delta0[,1] = c(2.5,   .2, .25, -.7, -2.5,  2.4)
+delta1[,1] = c(1.7, -2.3, 4.5,   6, -7.3, -1.6)
 delta0[,2] = 3 - 2*delta0[,1]
 delta1[,2] = 3 - 2*delta1[,1]
 sigma = 1
@@ -40,7 +39,11 @@ x1 = matrix(nrow = n, ncol = 5)
 for (j in 1:5) x1[,j] = rnorm(n)
 a1 = rbinom(n, 1, 0.5)
 y = matrix(nrow=n, ncol=2)
-for (j in 1:2) y[,j] = rnorm(n, cbind(1,x1)%*%delta0[,j] + a1*cbind(1,x1)%*%delta1[,j], sigma)
+for (j in 1:2) {
+  mu0 <- cbind(1, x1) %*% delta0[, j]
+  mu1 <- cbind(1, x1) %*% delta1[, j]
+  y[, j] <- rnorm(n, mu0 + a1 * as.numeric(mu1), sigma)
+}
 e = cbind(pnorm(v), 1-pnorm(v))
 u = rowSums(e*y)
 u_shift = range(u)
@@ -67,6 +70,7 @@ uSim = 6 * (uSim - u_shift[1])/(u_shift[2]-u_shift[1]) - 3
 
 
 # Estimating theta
+eps <- 1e-8
 file.path = paste0("estData/butlerZ_param_", run, ".RData")
 if(file.exists(file.path)) {
   load(file.path)
@@ -75,11 +79,11 @@ if(file.exists(file.path)) {
     beta0 <- theta[1:p]; beta1 <- theta[(p+1):(2*p)]
     alpha0 <- theta[(2*p+1)]; alpha1 <- theta[(2*p+2)]
     b1_mean <- exp(alpha0 + alpha1 * uSim) 
-    b1_comps_mat <- b1 * log(b1_mean) - b1_mean
+    b1_comps_mat <- b1 * log(pmax(b1_mean, eps)) - b1_mean
     linpred <- outer(beta1, vSim) 
     for(j in seq_len(p)) {linpred[j, ] <- linpred[j, ] + beta0[j]}
     w1_probs <- 1 / (1 + exp(-linpred))
-    log_w1_probs <- log(w1_probs); log_one_minus_probs <- log(1 - w1_probs)    
+    log_w1_probs <- log(pmax(w1_probs, eps)); log_one_minus_probs <- log(pmax(1 - w1_probs, eps))    
     w1_comps_mat <- matrix(0, n, nsamp)
     for(s in seq_len(nsamp)) {
       logp_s  <- matrix(log_w1_probs[, s], nrow=n, ncol=p, byrow=TRUE)
@@ -88,8 +92,9 @@ if(file.exists(file.path)) {
     }
     total_mat <- w1_comps_mat + b1_comps_mat
     comps     <- rowMeans(exp(total_mat))
-    logLik    <- mean(log(comps))
-    penalty <- -exp(-100 * alpha1)
+    logLik    <- mean(log(pmax(comps, eps)))
+    penalty   <- -exp(-100 * alpha1)
+
     return(10 * (logLik + penalty))
   }
 
@@ -127,7 +132,6 @@ if(file.exists(file.path)) {
 # ----------------------------------------
 
 source('genNamespace_butler.R')
-source('setGrid.R')
 
 # observational value
 initResults = c(mean(rowSums(y*e)), mean(b1), mean(y))

@@ -7,11 +7,12 @@
 setwd(dirname(rstudioapi::getSourceEditorContext()$path))
 
 today = format(Sys.Date(), "%Y%m%d")
-n = 2500
+# N_LIST=(600 2400)
+n = 600
 
 labels = c('ours', 'sat', 'naive', 'known')
-K_vec = c(2, 4, 6, 8, 10)
-seed_vec = 41 + 1:10
+K_vec = c(2, 4, 6, 8)
+seed_vec = 41 + 0:399
 numSeeds = length(seed_vec); numK = length(K_vec)
 
 
@@ -51,9 +52,54 @@ for(l in 1:length(labels)) {
 resTable_V = cbind(K = K_vec, resTable_V)
 resTable_Vdiff = cbind(K = K_vec, resTable_Vdiff)
 
+write.csv(resTable_V, paste0("./finalSummary/TableV_K_n=", n, "_", today, ".csv"))
+write.csv(resTable_Vdiff, paste0("./finalSummary/TableVdiff_K_n=", n, "_", today, ".csv"))
+
 options(width = 200)
 print(resTable_V)
 print(resTable_Vdiff)
 
-write.csv(resTable_V, paste0('evaData/TableV_K_n=',n , "_", today, '.csv'), row.names = FALSE)
-write.csv(resTable_Vdiff, paste0('evaData/TableVdiff_K_n=',n , "_", today, '.csv'), row.names = FALSE)
+
+
+
+# labels <- c("mis")     # already defined
+# seed_vec, numSeeds     # already defined
+# K_vec, numK            # define these for your K grid
+# n_fixed                # pick the n you want (since we're "by K" now)
+# lab, today             # already defined
+
+n_fixed <- 2400
+resTable_mae <- matrix(NA_real_, nrow = length(K_vec), ncol = length(labels) * 2)
+colnames(resTable_mae) <- as.vector(t(outer(labels, c("_mean", "_sd"), paste0)))
+
+library(reticulate)
+use_condaenv("luql_env", required = TRUE)
+np <- import("numpy")
+numSeeds <- length(seed_vec)
+numK <- length(K_vec)
+
+# Preallocate
+resMat <- matrix(NA_real_, numSeeds, numK)
+
+for (i in seq_along(seed_vec)) {
+  seed <- seed_vec[i]
+  for (j in seq_along(K_vec)) {
+    run <- sprintf("seed=%s_K=%s_n=%s", seed, K_vec[j], n_fixed)
+    f <- file.path("estData", paste0("errors_", run, ".npy"))
+    if (file.exists(f)) {
+      resMat[i, j] <- as.numeric(np$load(f)[2])  # MAE (2nd entry)
+    }
+  }
+}
+out <- data.frame(
+  K = K_vec,
+  mae_mean = colMeans(resMat, na.rm = TRUE),
+  mae_sd   = apply(resMat, 2, sd, na.rm = TRUE),
+  n_found  = colSums(!is.na(resMat))
+)
+
+print(out)
+write.csv(
+  out, sprintf("finalSummary/TableMAE_K_n=%s_%s.csv",
+  n_fixed, format(Sys.Date(), "%Y%m%d")), row.names = FALSE
+)

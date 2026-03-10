@@ -2,19 +2,19 @@
 setwd(dirname(rstudioapi::getSourceEditorContext()$path))
 
 library(reticulate)
-use_condaenv('prl_env')
+use_condaenv('luql_env')
 library(ggplot2)
 np = import("numpy")
 
-n = 2500 # 600 or 2500
+n = 600 # 600 or 2400
 today = format(Sys.Date(), "%Y%m%d")
 
 
 # -------------------------
 #           Setup
 # -------------------------
-K_vec = c(2, 4, 6, 8, 10)
-seed_vec = 41 + 1:10
+K_vec = c(2, 4, 6, 8)
+seed_vec = 41 + 0:399
 numSeeds = length(seed_vec); numK = length(K_vec)
 timeMat = errMat = matrix(nrow=numSeeds, ncol=numK)
 colnames(timeMat) = colnames(errMat) = K_vec
@@ -50,7 +50,7 @@ loadTheta = function(run) {
 for (i in 1:numSeeds) {
   for (j in 1:numK) {
     seed = seed_vec[i]; K = K_vec[j]
-    run = paste('seed=', seed, '_Ksm=', K, '_n=', n, sep='')
+    run = paste('seed=', seed, '_K=', K, '_n=', n, sep='')
     file_name = paste0('estData/time_', run, '.npy')
     if(file.exists(file_name)) timeMat[i,j] = np$load(file_name)
     file_name = paste0('estData/errors_', run, '.npy')
@@ -82,7 +82,7 @@ comp_plot = ggplot(data=plot_data, mapping = aes(x=K)) +
   theme_minimal(base_size = 15) + 
   theme(panel.grid.minor = element_blank()) 
 
-pdf(file=paste0("evaData/plot_comptime_K_n=",n,"_", today, ".pdf"), width=7, height=4)
+pdf(file=paste0("finalSummary/plot_comptime_K_n=",n,"_", today, ".pdf"), width=7, height=4)
 plot(comp_plot)
 dev.off()
 
@@ -96,8 +96,83 @@ error_plot = ggplot(data=plot_data, mapping = aes(x=K)) +
   theme_minimal(base_size = 15) +
   theme(panel.grid.minor = element_blank()) 
 
-pdf(file=paste0("evaData/plot_err_K_n=",n,"_", today, ".pdf"), width=7, height=4)
+pdf(file=paste0("finalSummary/plot_err_K_n=",n,"_", today, ".pdf"), width=7, height=4)
 plot(error_plot)
 dev.off()
 
 
+# Box plots
+
+# -------------------------
+#        Make Plots
+# -------------------------
+
+# Convert matrices to long format for boxplots
+plot_long <- data.frame(
+  K = factor(rep(K_vec, each = numSeeds), levels = K_vec),
+  time_min = as.vector(timeMat) / 60,
+  err = as.vector(errMat)
+)
+
+# N = 2400
+# ---- Computation time boxplots ----
+comp_plot <- ggplot(plot_long, aes(x = K, y = time_min)) +
+  coord_cartesian(ylim = c(0, 260)) +
+  scale_y_continuous(breaks = seq(0, 250, by = 50)) +
+  geom_boxplot(width = 0.5, outlier.shape = NA, linewidth = 0.6) +
+  stat_summary(fun = mean, geom = "point", size = 2.2) +
+  xlab("K") +
+  ylab("Computation Time (minutes)") +
+  theme_classic(base_size = 15)
+
+pdf(file = paste0("finalSummary/boxplot_comptime_K_n=", n, "_", today, ".pdf"),
+    width = 7, height = 4)
+print(comp_plot)
+dev.off()
+
+
+# ---- Error boxplots ----
+error_plot <- ggplot(plot_long, aes(x = K, y = err)) +
+  coord_cartesian(ylim = c(0, 0.5)) + 
+  geom_boxplot(width = 0.5, outlier.shape = NA, linewidth = 0.6) +
+  stat_summary(fun = mean, geom = "point", size = 2.2) +
+  xlab("K") +
+  ylab("Mean Absolute Error") +
+  theme_classic(base_size = 15)
+
+pdf(file = paste0("finalSummary/boxplot_err_K_n=", n, "_", today, ".pdf"),
+    width = 7, height = 4)
+print(error_plot)
+dev.off()
+
+
+# N = 600
+# ---- Computation time boxplots ----
+comp_plot <- ggplot(plot_long, aes(x = K, y = time_min)) +
+  coord_cartesian(ylim = c(0, 260)) +
+  scale_y_continuous(breaks = seq(0, 250, by = 50)) +
+  geom_boxplot(width = 0.5, outlier.shape = NA, linewidth = 0.6) +
+  stat_summary(fun = mean, geom = "point", size = 2.2) +
+  xlab("K") +
+  ylab("Computation Time (minutes)") +
+  theme_classic(base_size = 15)
+
+pdf(file = paste0("finalSummary/boxplot_comptime_K_n=", n, "_", today, ".pdf"),
+    width = 7, height = 4)
+print(comp_plot)
+dev.off()
+
+
+# ---- Error boxplots ----
+error_plot <- ggplot(plot_long, aes(x = K, y = err)) +
+  coord_cartesian(ylim = c(0, 1.25)) + 
+  geom_boxplot(width = 0.5, outlier.shape = NA, linewidth = 0.6) +
+  stat_summary(fun = mean, geom = "point", size = 2.2) +
+  xlab("K") +
+  ylab("Mean Absolute Error") +
+  theme_classic(base_size = 15)
+
+pdf(file = paste0("finalSummary/boxplot_err_K_n=", n, "_", today, ".pdf"),
+    width = 7, height = 4)
+print(error_plot)
+dev.off()

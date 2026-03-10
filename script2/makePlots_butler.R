@@ -6,11 +6,11 @@ use_condaenv('prl_env')
 library(ggplot2)
 np = import("numpy")
 
-seed_vec = 41 + 1:10
+seed_vec = 41 + 0:399
 today = format(Sys.Date(), "%Y%m%d")
 
 labels = c('butlerOurs_', 'butlerSat_', 'butlerNaive_', 'butlerKnown_', 'butlerButler_')
-n_vec = c(100, 200, 500, 1000)
+n_vec = c(100, 200, 500, 1500)
 
 
 # -------------------------
@@ -58,9 +58,9 @@ for (i in 1:numSeeds) {
   for (j in 1:numN) {
     seed = seed_vec[i]; n = n_vec[j]
     run = paste('seed=', seed, '_n=', n, sep='')
-    file_name = paste0('estData/butler_time_', run, '.rds')
+    file_name = paste0('estData/butlerZ_time_', run, '.rds')
     if (file.exists(file_name)) timeMat[i, j] = readRDS(file_name)[1]
-    file_name = paste0('estData/butler_errors_', run, '.rds')
+    file_name = paste0('estData/butlerZ_errors_', run, '.rds')
     if (file.exists(file_name)) errMat[i, j] = readRDS(file_name)$mae
   }
 }
@@ -90,8 +90,7 @@ comp_plot = ggplot(data=plot_data, mapping = aes(x=n)) +
   theme_minimal(base_size = 15) + 
   theme(panel.grid.minor = element_blank()) 
 
-if(butler) {filename = paste0("evaData/plot_comptime_n_butler_", today, ".pdf")} else {
-filename = paste0("evaData/plot_comptime_n_butler_", today, ".pdf")}
+filename = paste0("finalSummary/plot_comptime_n_butlerZ_", today, ".pdf")
 pdf(file= filename, width=8, height=4)
 plot(comp_plot)
 dev.off()
@@ -107,8 +106,7 @@ error_plot = ggplot(data=plot_data, mapping = aes(x=n)) +
   theme_minimal(base_size = 15) +
   theme(panel.grid.minor = element_blank()) 
 
-if(butler) {filename = paste0("evaData/plot_err_n_butler_", today, ".pdf")} else {
-filename = paste0("evaData/plot_err_n_butler_", today, ".pdf")}
+filename = paste0("finalSummary/plot_err_n_butlerZ_", today, ".pdf")
 pdf(file=filename, width=8, height=4)
 plot(error_plot)
 dev.off()

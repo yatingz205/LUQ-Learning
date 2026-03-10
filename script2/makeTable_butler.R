@@ -3,11 +3,11 @@ setwd(dirname(rstudioapi::getSourceEditorContext()$path))
 
 today = format(Sys.Date(), "%Y%m%d")
 
-n_vec = c(100, 200, 500, 1000)  
+n_vec = c(100, 200, 500, 1500)  
 lab = paste0('butler')
 
 
-seed_vec = 41 + 1:10
+seed_vec = 41 + 0:399
 numSeeds = length(seed_vec); numN = length(n_vec)
 
 
@@ -49,11 +49,11 @@ resTable_V = cbind(N = n_vec, resTable_V)
 resTable_Vdiff = cbind(N = n_vec, resTable_Vdiff)
 
 options(width = 200)
-print(resTable_V)
-print(resTable_Vdiff)
+#print(resTable_V)
+#print(resTable_Vdiff)
 
-write.csv(resTable_V, paste0('evaData/TableV_n_', lab, "_", today, '.csv'), row.names = FALSE)
-write.csv(resTable_Vdiff, paste0('evaData/TableVdiff_n_', lab, "_", today, '.csv'), row.names = FALSE)
+write.csv(resTable_V, paste0('finalSummary/TableV_n_', lab, "_", today, '.csv'), row.names = FALSE)
+write.csv(resTable_Vdiff, paste0('finalSummary/TableVdiff_n_', lab, "_", today, '.csv'), row.names = FALSE)
 
 
 
@@ -85,4 +85,4 @@ for(l in 1:length(labels)) {
 resTable_E = cbind(N = n_vec, resTable_E)
 print(resTable_E)
 
-write.csv(resTable_E, paste0('evaData/TableEerr_n_', lab, "_", today, '.csv'), row.names = FALSE)
+write.csv(resTable_E, paste0('finalSummary/TableEerr_n_', lab, "_", today, '.csv'), row.names = FALSE)

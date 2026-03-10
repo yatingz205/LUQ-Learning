@@ -20,12 +20,11 @@ alpha2 = 0.6; alpha02 = alpha01+0.5
 
 gamma01 = array(rnorm(12,sd=0.5),dim=c(4,3))
 gamma11 = array(rnorm(12,sd=1),dim=c(4,3))
-gamma02 = array(rnorm(12,sd=1),dim=c(4,3))
+gamma02 = array(0,dim=c(4,3))
 gamma12 = array(0,dim=c(4,3))
 gamma02[,1] = rep(0,4)
+gamma02[,2] = 2*(sqrt(0.8)*gamma01[,2] + sqrt(0.2)*rnorm(4, sd=0.5))
 gamma02[,3] = -gamma02[,2]
-#gamma02 = array(0,dim=c(4,3))
-#gamma12 = array(0,dim=c(4,3))
 
 lambda1 = 0.5; lambda2 = 2
 allPerms = matrix(c(1,2,0,2,1,0,0,1,2,2,0,1,0,2,1,1,0,2), ncol=3, byrow=T)+1
@@ -47,25 +46,38 @@ if(lab == 'mis') {
     v_extend = e = simulate_dirichlet(n, c(1,1,1))
 }
 eR = t(apply(e, 1, order))
+
 for (j in 1:ncol(w1)) w1[,j] = rbinom(n, 1, sigmoid(v_extend %*% c(beta01[j], beta1[,j])))
 x1 =  matrix(rbinom(3*n, 10, 0.5), ncol=3)
 a1_sparse = sample(c(1,2,3,4), n, replace = T)
 a1 = model.matrix(~-1+as.factor(a1_sparse))
 for (j in 1:ncol(w2)) w2[,j] = rbinom(n, 1, sigmoid(v_extend %*% c(beta02[j], beta2[,j])))
-for (j in 1:ncol(x2)) x2[,j] = rbinom(n, 10, sigmoid(gamma01[,j]%*%t(a1)+((x1[,j]-5)/2.5)*gamma11[,j]%*%t(a1)))
+shift_x1 = apply(x1, 2, mean); scale_x1 = apply(x1, 2, sd)
+for (j in 1:ncol(x2)) x2[,j] = rbinom(n, 10, sigmoid(gamma01[,j]%*%t(a1)+((x1[,j]-shift_x1[j])/scale_x1[j])*gamma11[,j]%*%t(a1)))
 for (k in 2:(ncol(b1probs)-1)) b1probs[,k] = sigmoid(alpha01[k] - alpha1*rowSums(x2*e))-sigmoid(alpha01[k-1] - alpha1*rowSums(x2*e))
 b1probs[,1] = sigmoid(alpha01[1] - alpha1*rowSums(x2*e)); b1probs[,7] = 1-rowSums(b1probs[,1:6])
 b1 = glmnet::rmult(b1probs)
-#c = sample(c(1,2,3,4), n, replace=T)
-#q = quantile(rowSums(x1), probs = c(0.25, 0.5, 0.75))
-#c = as.numeric(as.character(cut(rowSums(x1), breaks = c(-Inf, q[1], q[2], q[3], Inf), labels = 1:4, right = TRUE)))
-# Fixed breakpoints instead of quantiles
-fixed_breaks <- c(-Inf, 13, 15, 17, Inf)
-c = as.numeric(as.character(cut(rowSums(x1), breaks = fixed_breaks, labels = 1:4, right = TRUE)))
-new_a_sparse = sapply(1:n, function(i) sample(setdiff(seq(1,4), a1_sparse[i]), 1))
-new_a = model.matrix(~-1+as.factor(new_a_sparse))
-binaryDraws = rbinom(n, 1, 0.5)
-a2 = a1 + new_a*(c==2 | a1[,1]==1 | (c==3 & binaryDraws==1)) - a1*((c==4 | (c==3 & binaryDraws==0)) & a1[,1]==1)
+q <- quantile(rowMeans(x1), probs = c(0.25, 0.50, 0.75), type = 2)
+c <- as.integer(cut(rowMeans(x1), breaks = c(-Inf, q[1], q[2], q[3], Inf), include.lowest = TRUE, labels = 1:4))
+
+new_a_sparse <- sapply(1:n, function(i) sample(setdiff(1:4, a1_sparse[i]), 1))
+new_a <- model.matrix(~-1 + as.factor(new_a_sparse))
+binaryDraws <- rbinom(n, 1, 0.5)
+
+a2 <- matrix(0, n, 4)
+a2[c == 1, ] <- a1[c == 1, ]
+a2[c == 2, ] <- a1[c == 2, ] + new_a[c == 2, ]
+
+idx <- (c == 3 & (a1_sparse == 1))
+a2[idx, ] <- a1[idx, ] + new_a[idx, ]
+idx <- (c == 3 & !(a1_sparse == 1))
+a2[idx, ] <- new_a[idx, ] + a1[idx, ]*binaryDraws[idx]
+
+idx <- (c == 4 & (a1_sparse == 1))
+a2[idx, ] <- a1[idx, ] + new_a[idx, ]
+idx <- (c == 4 & !(a1_sparse == 1))
+a2[idx, ] <- new_a[idx, ]
+
 shift_x2 = apply(x2, 2, mean); scale_x2 = apply(x2, 2, sd)
 for (j in 1:ncol(y)) y[,j] = rbinom(n, 10, sigmoid(gamma02[,j]%*%t(a2)+((x2[,j]-shift_x2[j])/scale_x2[j])*gamma12[,j]%*%t(a2)))
 for (k in 2:(ncol(b2probs)-1)) b2probs[,k] = sigmoid(alpha02[k] - alpha2*rowSums(y*e))-sigmoid(alpha02[k-1] - alpha2*rowSums(y*e))
@@ -78,23 +90,14 @@ w2R_probs = exp(-lambda2*tau_dists) / rowSums(exp(-lambda2*tau_dists))
 for (i in 1:nrow(w2R)) w2R[i,] = allPerms[sample(x = seq(1,6), size=1, prob = w2R_probs[i,]),]
 
 
-#simulating V, E (from assumed model)
-if(lab == 'op' || lab == 'mis') {
-    vSim = matrix(rnorm(2*nSim), nrow=nSim, ncol=2)
-    vextendSim = cbind(rep(1,nSim), vSim)
-    eSim = t(apply(vSim, 1, softmax))
-}
-
 
 #saving files to python
+Sys.setenv(RETICULATE_PYTHON = Sys.which("python"))
 library(reticulate)
 np = import("numpy")
 makeTitle = function(objName) paste('simData/', objName, '_', run, '.npy', sep='')
 np$save(makeTitle('x1'), x1)
-np$save(makeTitle('v_extend'), v_extend)
-np$save(makeTitle('vextendSim'), vextendSim)
-np$save(makeTitle('e'), e)
-np$save(makeTitle('eSim'), eSim)
+np$save(makeTitle('v_extend'), v_extend); np$save(makeTitle('e'), e)
 np$save(makeTitle('beta01'), beta01); np$save(makeTitle('beta1'), beta1)
 np$save(makeTitle('beta02'), beta02); np$save(makeTitle('beta2'), beta2)
 np$save(makeTitle('alpha01'), alpha01); np$save(makeTitle('alpha1'), alpha1)

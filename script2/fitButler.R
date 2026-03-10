@@ -1,7 +1,6 @@
 #helper functions and libraries
 suppressMessages({
   library(numDeriv)
-  library(doParallel)
   library(caret)
 })
 
@@ -23,8 +22,8 @@ beta0 = rep(0, p)
 beta1 = rnorm(p)
 delta0 = matrix(nrow=6, ncol=2)
 delta1 = matrix(nrow=6, ncol=2)
-delta0[,1] = c(2.5, .2, .25, -.7, -2.5, 2.4)
-delta1[,1] = c(1.7, -2.3, 4.5, 6, -7.3, -1.6)
+delta0[,1] = c(2.5,   .2, .25, -.7, -2.5,  2.4)
+delta1[,1] = c(1.7, -2.3, 4.5,   6, -7.3, -1.6)
 delta0[,2] = 3 - 2*delta0[,1]
 delta1[,2] = 3 - 2*delta1[,1]
 sigma = 1
@@ -40,12 +39,16 @@ x1 = matrix(nrow = n, ncol = 5)
 for (j in 1:5) x1[,j] = rnorm(n)
 a1 = rbinom(n, 1, 0.5)
 y = matrix(nrow=n, ncol=2)
-for (j in 1:2) y[,j] = rnorm(n, cbind(1,x1)%*%delta0[,j] + a1*cbind(1,x1)%*%delta1[,j], sigma)
+for (j in 1:2) {
+  mu0 <- cbind(1, x1) %*% delta0[, j]
+  mu1 <- cbind(1, x1) %*% delta1[, j]
+  y[, j] <- rnorm(n, mu0 + a1 * as.numeric(mu1), sigma)
+}
 e = cbind(pnorm(v), 1-pnorm(v))
 u = rowSums(e*y)
 u_shift = range(u)
 u_tf = 6 * (u - u_shift[1])/(u_shift[2]-u_shift[1]) - 3
-b1 = rpois(n, exp(alpha0 + alpha1*u))
+b1 = rpois(n, exp(alpha0 + alpha1*u_tf))
 theta = c(beta0, beta1)
 # save generated data
 save_path <- paste0("simData/butler_data_", run, ".RData")
@@ -73,8 +76,9 @@ if(file.exists(file.path)) {
     w1_probs  <- sigmoid(sweep(linpred, 1, beta0, FUN = "+"))
     ll_i <- numeric(n)
     for (i in seq_len(n)) {
-      log_lik_mat <- w1[i, ] * log(w1_probs) + (1 - w1[i, ]) * log(1 - w1_probs)
-      sum_log <- colSums(log_lik_mat); val_s   <- exp(sum_log)        
+      eps <- 1e-8
+      log_lik_mat <- w1[i, ] * log(pmax(w1_probs, eps)) + (1 - w1[i, ]) * log(pmax(1 - w1_probs, eps))
+      sum_log <- colSums(log_lik_mat); val_s <- exp(sum_log)        
       ll_i[i] <- mean(val_s)          
     }
     logLik <- mean(log(ll_i))
@@ -116,7 +120,6 @@ if(file.exists(file.path)) {
 # --------------------------------
 
 source('genNamespace_butler.R')
-source('setGrid.R')
 
 # observational value
 initResults = c(mean(rowSums(y*e)), mean(b1), mean(y))

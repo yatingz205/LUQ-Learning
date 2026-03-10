@@ -4,6 +4,26 @@
 #        Algorithm Helper Functions
 # ----------------------------------------
 
+set_getpi = function(key_df) {
+    train_control <- caret::trainControl(
+    method = "cv",
+    number = 5,
+    search = "grid",
+    classProbs = TRUE,
+    allowParallel = TRUE,
+    verboseIter = FALSE,
+    sampling = 'up',
+    summaryFunction = multiClassSummary
+    )
+
+    tune_grid <- expand.grid(
+    mtry = seq(floor(sqrt(ncol(key_df))), ncol(key_df), by = 3),
+    splitrule = c('gini'),
+    min.node.size = c(5, 15, 25)
+    )
+    return(list(train_control = train_control, tune_grid = tune_grid))
+}
+
 exp_e = function(theta, w1_project, vSim, eSim) {
   beta0 = theta[1:p]; beta1 = theta[(p+1):(2*p)]
   w1_probs = exp(colSums(dbinom(w1_project, 1, sigmoid(beta0 + beta1%*%t(vSim)), log=T)))
@@ -150,8 +170,8 @@ piK_fnc = function(pi1_map, x1_new, w1_new) {
   } else {
     design = cbind(key_df, val_df)
 
-    num_cores <- detectCores() - 1 
-    cl <- makeCluster(num_cores); registerDoParallel(cl)
+    # num_cores <- detectCores() - 1 
+    #cl <- makeCluster(num_cores); registerDoParallel(cl)
     config <- set_getpi(key_df)
     pi1_model <- train(
       a ~ .,
@@ -165,7 +185,7 @@ piK_fnc = function(pi1_map, x1_new, w1_new) {
       replace = FALSE,                     
       sample.fraction = 1
     )
-    stopCluster(cl); registerDoSEQ()
+    #stopCluster(cl); registerDoSEQ()
 
     result = predict(pi1_model, newdata = key_new_df)
     return(result)
@@ -184,8 +204,8 @@ piK_known_fnc = function(pi1_map, x1_new, v_new) {
   } else {
     design = cbind(key_df, val_df)
 
-    num_cores <- detectCores() - 1 
-    cl <- makeCluster(num_cores); registerDoParallel(cl)
+    # num_cores <- detectCores() - 1 
+    #cl <- makeCluster(num_cores); registerDoParallel(cl)
     config <- set_getpi(key_df)
     pi1_model <- train(
       a ~ .,
@@ -199,7 +219,7 @@ piK_known_fnc = function(pi1_map, x1_new, v_new) {
       replace = FALSE,                     
       sample.fraction = 1
     )
-    stopCluster(cl); registerDoSEQ()
+    #stopCluster(cl); registerDoSEQ()
 
     result = predict(pi1_model, newdata = key_new_df)
     return(result)

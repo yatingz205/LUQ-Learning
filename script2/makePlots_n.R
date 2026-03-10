@@ -2,19 +2,19 @@
 setwd(dirname(rstudioapi::getSourceEditorContext()$path))
 
 library(reticulate)
-use_condaenv('prl_env')
+use_condaenv('luql_env')
 library(ggplot2)
 np = import("numpy")
 
-lab = 'op' # 'op' or 'mis'
+lab = 'mis' # 'op' or 'mis'
 today = format(Sys.Date(), "%Y%m%d")
 
 
 # -------------------------
 #           Setup
 # -------------------------
-n_vec = c(150, 300, 600, 1200, 2500)
-seed_vec = 41 + 1:10
+n_vec = c(300, 600, 1200, 2400, 4800)
+seed_vec = 41 + 0:399
 numSeeds = length(seed_vec); numN = length(n_vec)
 timeMat = errMat = matrix(nrow=numSeeds, ncol=numN)
 colnames(timeMat) = colnames(errMat) = n_vec
@@ -67,7 +67,7 @@ for (i in 1:numSeeds) {
 }
 
 # print to check all has ran
-errMat
+# errMat
 
 
 # -------------------------
@@ -93,7 +93,7 @@ comp_plot = ggplot(data=plot_data, mapping = aes(x=n)) +
   theme_minimal(base_size = 15) + 
   theme(panel.grid.minor = element_blank()) 
 
-filename = paste0("evaData/plot_comptime_op_", today, ".pdf")
+filename = paste0("finalSummary/plot_comptime_", lab, "_", today, ".pdf")
 pdf(file= filename, width=8, height=4)
 plot(comp_plot)
 dev.off()
@@ -109,7 +109,7 @@ error_plot = ggplot(data=plot_data, mapping = aes(x=n)) +
   theme_minimal(base_size = 15) +
   theme(panel.grid.minor = element_blank()) 
 
-filename = paste0("evaData/plot_err_op_", today, ".pdf")
+filename = paste0("finalSummary/plot_err_", lab, "_", today, ".pdf")
 pdf(file=filename, width=8, height=4)
 plot(error_plot)
 dev.off()
